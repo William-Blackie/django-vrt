@@ -9,6 +9,7 @@ It is built for large, fast-moving UI systems where you need deterministic scree
 - Deterministic lockfile matrix (`djvrt.lock.json`)
 - Reproducible baseline and check workflows
 - Built-in screenshot diffing and CI reports
+- Interactive HTML review UI with filter/sort and image comparison modes
 - Django route discovery from sitemap and URLConf
 - Data and model seeding hooks for stable UI state
 - Package-first extension model for complex projects
