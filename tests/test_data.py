@@ -6,8 +6,22 @@ from pathlib import Path
 
 import pytest
 
-from djvrt.data import DataContext, prepare_data
+from djvrt.data import DataContext, DataPreparationError, prepare_data
 from djvrt.models import DataConfig, DJVRTConfig
+
+
+def test_prepare_data_returns_empty_when_disabled(tmp_path: Path) -> None:
+    config = DJVRTConfig(data=DataConfig(enabled=False, commands=["echo hello"]))
+    result = prepare_data(
+        config,
+        context=DataContext(
+            project_root=tmp_path,
+            config_path=tmp_path / "djvrt.toml",
+            phase="baseline",
+        ),
+    )
+    assert result.executed_commands == []
+    assert result.loader_called is False
 
 
 def test_prepare_data_runs_commands_with_context_env(tmp_path: Path) -> None:
@@ -166,3 +180,181 @@ def test_prepare_data_can_seed_django_models_repeatably(monkeypatch: pytest.Monk
 
     user_model = get_user_model()
     assert user_model.objects.filter(username="djvrt-seeded-user").count() == 1
+
+
+def test_prepare_data_rejects_invalid_loader_spec(tmp_path: Path) -> None:
+    config = DJVRTConfig(data=DataConfig(enabled=True, loader="invalid-loader", phases=["baseline"]))
+    with pytest.raises(DataPreparationError, match="Expected 'module:function'"):
+        prepare_data(
+            config,
+            context=DataContext(
+                project_root=tmp_path,
+                config_path=tmp_path / "djvrt.toml",
+                phase="baseline",
+            ),
+        )
+
+
+@pytest.mark.parametrize("loader", [":load", "module:"])
+def test_prepare_data_rejects_loader_spec_with_empty_segments(loader: str, tmp_path: Path) -> None:
+    config = DJVRTConfig(data=DataConfig(enabled=True, loader=loader, phases=["baseline"]))
+    with pytest.raises(DataPreparationError, match="Expected 'module:function'"):
+        prepare_data(
+            config,
+            context=DataContext(
+                project_root=tmp_path,
+                config_path=tmp_path / "djvrt.toml",
+                phase="baseline",
+            ),
+        )
+
+
+def test_prepare_data_rejects_missing_loader_module(tmp_path: Path) -> None:
+    config = DJVRTConfig(data=DataConfig(enabled=True, loader="missing_module:load", phases=["baseline"]))
+    with pytest.raises(DataPreparationError, match="Failed importing data loader module"):
+        prepare_data(
+            config,
+            context=DataContext(
+                project_root=tmp_path,
+                config_path=tmp_path / "djvrt.toml",
+                phase="baseline",
+            ),
+        )
+
+
+def test_prepare_data_rejects_non_callable_loader(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    (tmp_path / "bad_loader.py").write_text("loader = 42\n", encoding="utf-8")
+    monkeypatch.syspath_prepend(str(tmp_path))
+
+    config = DJVRTConfig(data=DataConfig(enabled=True, loader="bad_loader:loader", phases=["baseline"]))
+    with pytest.raises(DataPreparationError, match="is not callable"):
+        prepare_data(
+            config,
+            context=DataContext(
+                project_root=tmp_path,
+                config_path=tmp_path / "djvrt.toml",
+                phase="baseline",
+            ),
+        )
+
+
+def test_prepare_data_command_failure_includes_stdout_and_stderr(tmp_path: Path) -> None:
+    command = (
+        f"{shlex.quote(sys.executable)} -c "
+        "\"import sys; print('out'); print('err', file=sys.stderr); raise SystemExit(3)\""
+    )
+    config = DJVRTConfig(data=DataConfig(enabled=True, commands=[command], phases=["baseline"]))
+
+    with pytest.raises(DataPreparationError, match="exit=3"):
+        prepare_data(
+            config,
+            context=DataContext(
+                project_root=tmp_path,
+                config_path=tmp_path / "djvrt.toml",
+                phase="baseline",
+            ),
+        )
+
+
+def test_prepare_data_command_failure_can_be_ignored(tmp_path: Path) -> None:
+    command = f'{shlex.quote(sys.executable)} -c "raise SystemExit(2)"'
+    config = DJVRTConfig(
+        data=DataConfig(enabled=True, commands=[command], phases=["baseline"], fail_on_error=False),
+    )
+    result = prepare_data(
+        config,
+        context=DataContext(
+            project_root=tmp_path,
+            config_path=tmp_path / "djvrt.toml",
+            phase="baseline",
+        ),
+    )
+    assert result.executed_commands == []
+
+
+def test_prepare_data_supports_async_loader(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    marker_path = tmp_path / "async_loader_marker.txt"
+    (tmp_path / "async_loader.py").write_text(
+        "from pathlib import Path\n"
+        "async def load(context):\n"
+        "    Path(context.project_root / 'async_loader_marker.txt').write_text('ok', encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+    config = DJVRTConfig(data=DataConfig(enabled=True, loader="async_loader:load", phases=["baseline"]))
+
+    result = prepare_data(
+        config,
+        context=DataContext(
+            project_root=tmp_path,
+            config_path=tmp_path / "djvrt.toml",
+            phase="baseline",
+        ),
+    )
+    assert result.loader_called is True
+    assert marker_path.read_text(encoding="utf-8") == "ok"
+
+
+def test_prepare_data_loader_failure_can_be_ignored(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    (tmp_path / "failing_loader.py").write_text(
+        "def load(context):\n" "    raise RuntimeError('loader boom')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+    config = DJVRTConfig(
+        data=DataConfig(enabled=True, loader="failing_loader:load", phases=["baseline"], fail_on_error=False),
+    )
+    result = prepare_data(
+        config,
+        context=DataContext(
+            project_root=tmp_path,
+            config_path=tmp_path / "djvrt.toml",
+            phase="baseline",
+        ),
+    )
+    assert result.loader_called is False
+
+
+def test_prepare_data_loader_failure_raises(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    (tmp_path / "failing_loader.py").write_text(
+        "def load(context):\n" "    raise RuntimeError('loader boom')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+    config = DJVRTConfig(
+        data=DataConfig(enabled=True, loader="failing_loader:load", phases=["baseline"], fail_on_error=True),
+    )
+    with pytest.raises(DataPreparationError, match="Data loader 'failing_loader:load' failed: loader boom"):
+        prepare_data(
+            config,
+            context=DataContext(
+                project_root=tmp_path,
+                config_path=tmp_path / "djvrt.toml",
+                phase="baseline",
+            ),
+        )
+
+
+def test_prepare_data_reraises_data_preparation_error_from_loader(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "error_loader.py").write_text(
+        "from djvrt.data import DataPreparationError\n"
+        "def load(context):\n"
+        "    raise DataPreparationError('loader failed explicitly')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+    config = DJVRTConfig(
+        data=DataConfig(enabled=True, loader="error_loader:load", phases=["baseline"], fail_on_error=True),
+    )
+    with pytest.raises(DataPreparationError, match="loader failed explicitly"):
+        prepare_data(
+            config,
+            context=DataContext(
+                project_root=tmp_path,
+                config_path=tmp_path / "djvrt.toml",
+                phase="baseline",
+            ),
+        )
