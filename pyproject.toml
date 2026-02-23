@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling>=1.24.2"]
+requires = ["hatchling>=1.24.2", "hatch-vcs>=0.4.0"]
 build-backend = "hatchling.build"
 
 [project]
 name = "django-vrt"
-version = "0.2.0"
+dynamic = ["version"]
 description = "Deterministic visual regression testing CLI for Django platforms."
 readme = "README.md"
 license = { text = "MIT" }
@@ -57,3 +57,9 @@ mypy_path = "src"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/djvrt"]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/djvrt/__version__.py"

@@ -86,6 +86,46 @@ This keeps custom logic minimal and avoids per-project forks of VRT infrastructu
 - Set `runtime.js_random_seed` in `djvrt.toml` when frontend code uses `Math.random()`
 - Set `runtime.always_write_diff_images = true` if you need diff overlays for passed scenarios
 
+## Deployment to PyPI
+
+`django-vrt` is automatically published to PyPI via GitHub Actions. There are three ways to trigger a release:
+
+### 1. **GitHub Release (Recommended)**
+Create a new release through the GitHub UI:
+1. Go to Releases → "Create a new release"
+2. Set tag (e.g., `v0.2.0`) and title
+3. Click "Publish release"
+4. The workflow automatically builds and publishes to PyPI
+
+### 2. **Version Tag Push**
+Push a version tag directly:
+```bash
+git tag v0.2.0
+git push origin v0.2.0
+```
+This triggers the build and publish automatically.
+
+### 3. **Manual Workflow Trigger**
+Run the publish workflow manually from GitHub:
+1. Go to Actions → "publish" workflow
+2. Click "Run workflow" → "Run workflow"
+3. The current `main` branch code is built and published
+
+### Pre-release checklist
+Before releasing:
+- Update version in `pyproject.toml` (`version = "x.y.z"`)
+- Update `CHANGELOG.md` or release notes (if applicable)
+- Ensure all tests pass: `uv sync --extra dev && uv run pytest`
+- Verify linting: `uv run ruff check .`
+- Commit and push changes to `main`
+
+### How it works
+The publish workflow (`.github/workflows/publish.yml`) does the following:
+1. **Build stage**: Installs dependencies, builds wheel and source distributions, validates metadata
+2. **Publish stage**: Downloads artifacts and publishes to PyPI using OIDC authentication (no API key needed)
+
+The workflow uses GitHub's trusted publisher model for PyPI authentication. No secrets need to be configured—PyPI automatically trusts builds from this repository.
+
 ## Documentation map
 
 - `/docs/quickstart.md`
@@ -98,3 +138,17 @@ This keeps custom logic minimal and avoids per-project forks of VRT infrastructu
 
 - CI workflow: `examples/github-actions.yml`
 - Seeder adapter template: `examples/django_seed_adapter.py`
+
+## Sponsors
+
+This project is developed with support from **[Mabyduck](https://www.mabyduck.com/)** — Evaluating AI-generated audio, images, and videos with human feedback.
+
+<div style="background-color: white; padding: 20px; border-radius: 8px; display: inline-block;">
+  <a href="https://www.mabyduck.com/">
+    <img src="docs/assets/mabyduck_logo.png" alt="Mabyduck Logo" width="350">
+  </a>
+</div>
+
+Special thanks to [Lucas Theis](https://github.com/lucastheis) ([LinkedIn](https://www.linkedin.com/in/lucas-theis-5408109a/)) for enabling this work during business hours. Project maintained by [William Blackie](https://github.com/William-Blackie) ([LinkedIn](https://www.linkedin.com/in/william-blackie/)).
+
+Learn more: [Mabyduck on GitHub](https://github.com/mabyduck) | [Mabyduck on LinkedIn](https://www.linkedin.com/company/mabyduck/)
