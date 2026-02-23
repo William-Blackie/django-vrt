@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import webbrowser
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -89,6 +90,20 @@ def _load_lock(config: DJVRTConfig, config_path: Path, lock_path: Path | None) -
         console.print(f"[red]Lockfile not found:[/red] {resolved_lock_path}")
         raise typer.Exit(code=2)
     return resolved_lock_path, read_lockfile(resolved_lock_path)
+
+
+def _open_report(path: Path) -> None:
+    report_path = path.resolve()
+    try:
+        opened = webbrowser.open(report_path.as_uri())
+    except Exception as exc:  # pragma: no cover - environment/browser dependent
+        console.print(f"[yellow]Could not open report:[/yellow] {exc}")
+        return
+
+    if opened:
+        console.print(f"[green]Opened report:[/green] {report_path}")
+    else:
+        console.print(f"[yellow]Could not open report automatically:[/yellow] {report_path}")
 
 
 def _prepare_data_or_exit(
@@ -283,6 +298,11 @@ def baseline(
     config_path: Path = typer.Option(Path(DEFAULT_CONFIG_FILENAME), "--config", help="Path to djvrt.toml"),
     lock_path: Path | None = typer.Option(None, "--lock", help="Path to lockfile"),
     force: bool = typer.Option(False, "--force", help="Overwrite existing baseline for this lock hash"),
+    open_report: bool = typer.Option(
+        False,
+        "--open",
+        help="Open generated HTML report in default browser",
+    ),
     skip_data_prepare: bool = typer.Option(
         False,
         "--skip-data-prepare",
@@ -360,6 +380,9 @@ def baseline(
         )
     )
 
+    if open_report:
+        _open_report(html_path)
+
     if summary.totals.capture_errors > 0:
         console.print(f"[red]Capture errors:[/red] {summary.totals.capture_errors}")
         raise typer.Exit(code=1)
@@ -370,6 +393,11 @@ def check(
     config_path: Path = typer.Option(Path(DEFAULT_CONFIG_FILENAME), "--config", help="Path to djvrt.toml"),
     lock_path: Path | None = typer.Option(None, "--lock", help="Path to lockfile"),
     run_id: str | None = typer.Option(None, "--run-id", help="Run identifier for artifact folder"),
+    open_report: bool = typer.Option(
+        False,
+        "--open",
+        help="Open generated HTML report in default browser",
+    ),
     retry_regressions: int = typer.Option(
         1,
         "--retry-regressions",
@@ -521,6 +549,9 @@ def check(
         )
     )
 
+    if open_report:
+        _open_report(html_path)
+
     failures = (
         summary.totals.regressions
         + summary.totals.capture_errors
@@ -538,6 +569,11 @@ def report(
     summary_file: Path | None = typer.Option(None, "--summary", help="Path to summary.json"),
     html_file: Path | None = typer.Option(None, "--html", help="Path for HTML report output"),
     junit_file: Path | None = typer.Option(None, "--junit", help="Path for JUnit XML output"),
+    open_report: bool = typer.Option(
+        False,
+        "--open",
+        help="Open generated HTML report in default browser",
+    ),
 ) -> None:
     """Regenerate reports from an existing summary.json."""
     config_path, config = _load_config(config_path)
@@ -564,6 +600,8 @@ def report(
 
     console.print(f"[green]HTML:[/green] {html_path}")
     console.print(f"[green]JUnit:[/green] {junit_path}")
+    if open_report:
+        _open_report(html_path)
 
 
 @app.command()

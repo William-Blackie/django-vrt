@@ -50,6 +50,7 @@ uv run djvrt check
 
 If regressions are found, `djvrt` exits non-zero and writes artifacts under `.djvrt/runs/<run_id>/`.
 `report.html` includes a built-in triage UI with filters plus side-by-side, slider, and diff comparison modes.
+Use `uv run djvrt check --open` to open the report automatically after the run.
 
 ## Add authenticated coverage (optional)
 

@@ -63,6 +63,8 @@ Artifacts are stored in `.djvrt/` by default.
 - `djvrt auth-state`: capture Playwright `storage_state` JSON
 - `python -m djvrt.django_seed_cli`: run hook-driven project seeding
 
+Tip: add `--open` to `djvrt baseline`, `djvrt check`, or `djvrt report` to auto-open the generated HTML report.
+
 ## Package-first integration model
 
 Use `django-vrt` as the shared engine. Keep consumer-repo code limited to small extension modules:
