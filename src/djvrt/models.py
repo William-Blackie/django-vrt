@@ -6,6 +6,11 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
+def _default_phases() -> list[Literal["discover", "baseline", "check"]]:
+    """Default phases for VRT discovery."""
+    return ["baseline", "check"]
+
+
 class Viewport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -70,7 +75,7 @@ class DataConfig(BaseModel):
     commands: list[str] = Field(default_factory=list)
     env: dict[str, str] = Field(default_factory=dict)
     cwd: str | None = None
-    phases: list[Literal["discover", "baseline", "check"]] = Field(default_factory=lambda: ["baseline", "check"])
+    phases: list[Literal["discover", "baseline", "check"]] = Field(default_factory=_default_phases)
     fail_on_error: bool = True
 
 

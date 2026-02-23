@@ -7,6 +7,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
+from typing import Literal, cast
 
 import typer
 from rich.console import Console
@@ -229,10 +230,7 @@ def lock_cmd(
         raise typer.Exit(code=2)
 
     scenario_models = read_scenarios(scenario_path)
-    console.print(
-        "[cyan]Building lockfile[/cyan] "
-        f"(source={scenario_path}, scenarios={len(scenario_models)})"
-    )
+    console.print("[cyan]Building lockfile[/cyan] " f"(source={scenario_path}, scenarios={len(scenario_models)})")
 
     build_started = perf_counter()
     lockfile = build_lockfile(config, scenario_models)
@@ -721,7 +719,7 @@ def auth_state_cmd(
             email_selector=email_selector,
             password_selector=password_selector,
             submit_selector=submit_selector,
-            wait_until=wait_until,
+            wait_until=cast(Literal["commit", "domcontentloaded", "load", "networkidle"], wait_until),
         )
     except RuntimeError as exc:
         console.print(f"[red]{exc}[/red]")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 from urllib.parse import urljoin
 
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
@@ -23,7 +24,7 @@ def create_form_auth_state(
     email_selector: str,
     password_selector: str,
     submit_selector: str,
-    wait_until: str,
+    wait_until: Literal["commit", "domcontentloaded", "load", "networkidle"],
 ) -> Path:
     output.parent.mkdir(parents=True, exist_ok=True)
 

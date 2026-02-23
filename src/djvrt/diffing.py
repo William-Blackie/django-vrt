@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import Literal
 
 from PIL import Image, ImageChops
 
@@ -147,7 +148,7 @@ def _compare_scenario(
         )
 
     passed = mismatch_ratio <= scenario.threshold
-    status = "passed" if passed else "regression"
+    status: Literal["passed", "regression"] = "passed" if passed else "regression"
 
     return ScenarioResult(
         key=scenario.key,

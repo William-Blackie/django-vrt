@@ -113,10 +113,11 @@ Run the publish workflow manually from GitHub:
 
 ### Pre-release checklist
 Before releasing:
-- Update version in `pyproject.toml` (`version = "x.y.z"`)
+- Create or verify the release tag (`vX.Y.Z`) for `hatch-vcs` versioning
 - Update `CHANGELOG.md` or release notes (if applicable)
 - Ensure all tests pass: `uv sync --extra dev && uv run pytest`
 - Verify linting: `uv run ruff check .`
+- Verify coverage gate: `make coverage` (fails below configured threshold)
 - Commit and push changes to `main`
 
 ### How it works

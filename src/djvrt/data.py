@@ -5,10 +5,10 @@ import importlib
 import inspect
 import os
 import subprocess
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from djvrt.models import DJVRTConfig
 from djvrt.utils import resolve_path
@@ -62,7 +62,7 @@ def _load_loader(loader_spec: str) -> Callable[[DataContext], Any]:
         msg = f"Data loader '{loader_spec}' is not callable"
         raise DataPreparationError(msg)
 
-    return loader
+    return cast(Callable[[DataContext], Any], loader)
 
 
 def _run_command(command: str, *, cwd: Path, env: dict[str, str]) -> None:
@@ -86,10 +86,14 @@ def _run_command(command: str, *, cwd: Path, env: dict[str, str]) -> None:
         raise DataPreparationError("\n".join(message_parts))
 
 
+async def _await_result(awaitable: Awaitable[Any]) -> None:
+    await awaitable
+
+
 def _run_loader(loader: Callable[[DataContext], Any], context: DataContext) -> None:
     result = loader(context)
     if inspect.isawaitable(result):
-        asyncio.run(result)
+        asyncio.run(_await_result(result))
 
 
 def prepare_data(config: DJVRTConfig, *, context: DataContext) -> DataPreparationResult:

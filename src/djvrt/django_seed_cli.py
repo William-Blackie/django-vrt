@@ -73,7 +73,7 @@ def _build_seed_options(
 
     signature = inspect.signature(options_builder)
     accepts_extra = "extra_options" in signature.parameters
-    kwargs = {
+    kwargs: dict[str, Any] = {
         "scenario_file": scenario_file,
         "manifest_file": manifest_file,
         "include_types": include_types,
@@ -89,9 +89,7 @@ def _build_seed_options(
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Run deterministic Django VRT seeding via configurable project hooks."
-    )
+    parser = argparse.ArgumentParser(description="Run deterministic Django VRT seeding via configurable project hooks.")
     parser.add_argument(
         "--seeder",
         required=True,

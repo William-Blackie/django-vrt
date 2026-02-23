@@ -5,6 +5,9 @@ import hashlib
 import re
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
+
+from playwright.async_api import Browser, Locator
 
 from djvrt.models import CaptureOutcome, DJVRTConfig, LockedScenario, Lockfile
 from djvrt.utils import resolve_path
@@ -41,7 +44,7 @@ def js_random_init_script(seed: int) -> str:
 
 
 async def _capture_one(
-    browser: object,
+    browser: Browser,
     scenario: LockedScenario,
     *,
     config: DJVRTConfig,
@@ -50,7 +53,7 @@ async def _capture_one(
 ) -> CaptureOutcome:
     image_path = output_dir / image_filename(scenario)
 
-    context_kwargs: dict[str, object] = {
+    context_kwargs: dict[str, Any] = {
         "viewport": {"width": scenario.width, "height": scenario.height},
         "locale": config.runtime.locale,
         "timezone_id": config.runtime.timezone,
@@ -100,7 +103,7 @@ async def _capture_one(
             css = f"{selector_group} {{ visibility: hidden !important; }}"
             await page.add_style_tag(content=css)
 
-        masks: list[object] = []
+        masks: list[Locator] = []
         for selector in scenario.mask_selectors:
             locator = page.locator(selector)
             count = await locator.count()

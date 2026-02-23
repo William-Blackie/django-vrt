@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import importlib
 import json
 import re
 from abc import ABC, abstractmethod
@@ -21,7 +22,7 @@ class SeedOptions:
     include_types: tuple[str, ...] | None = None
     max_variants_per_type: int = 24
     tree_shake: bool = True
-    extra_context: dict[str, Any] = None
+    extra_context: dict[str, Any] | None = None
 
     @property
     def extra(self) -> dict[str, Any]:
@@ -67,23 +68,21 @@ class Variant:
     def mutation_path(self) -> str | None:
         if self.mutation is None:
             return None
-        return '.'.join(str(chunk) for chunk in self.mutation.path)
+        return ".".join(str(chunk) for chunk in self.mutation.path)
 
 
 def snake_to_lower_camel(value: str) -> str:
-    parts = value.split('_')
-    if not parts:
-        return value
-    return parts[0] + ''.join(item.capitalize() for item in parts[1:])
+    parts = value.split("_")
+    return parts[0] + "".join(item.capitalize() for item in parts[1:])
 
 
 def _slugify(value: str) -> str:
-    slug = re.sub(r'[^a-z0-9]+', '-', value.lower()).strip('-')
-    return slug or 'variant'
+    slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+    return slug or "variant"
 
 
 def _has_type(schema: dict[str, Any], expected: str) -> bool:
-    schema_type = schema.get('type')
+    schema_type = schema.get("type")
     if isinstance(schema_type, str):
         return schema_type == expected
     if isinstance(schema_type, list):
@@ -92,52 +91,50 @@ def _has_type(schema: dict[str, Any], expected: str) -> bool:
 
 
 def _stable_json(value: Any) -> str:
-    return json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=True)
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
 
 def _default_for_schema(schema: dict[str, Any]) -> Any:
-    if 'default' in schema:
-        return copy.deepcopy(schema['default'])
+    if "default" in schema:
+        return copy.deepcopy(schema["default"])
 
-    if _has_type(schema, 'boolean'):
+    if _has_type(schema, "boolean"):
         return False
 
-    if 'enum' in schema and isinstance(schema['enum'], list) and schema['enum']:
-        return schema['enum'][0]
+    if "enum" in schema and isinstance(schema["enum"], list) and schema["enum"]:
+        return schema["enum"][0]
 
-    if _has_type(schema, 'integer') or _has_type(schema, 'number'):
-        minimum = schema.get('minimum')
+    if _has_type(schema, "integer") or _has_type(schema, "number"):
+        minimum = schema.get("minimum")
         if isinstance(minimum, int | float):
             return minimum
         return 0
 
-    if _has_type(schema, 'array'):
+    if _has_type(schema, "array"):
         return []
 
-    if _has_type(schema, 'object') or 'properties' in schema:
+    if _has_type(schema, "object") or "properties" in schema:
         return {}
 
     return None
 
 
 def _candidate_values(schema: dict[str, Any], current_value: Any) -> list[Any]:
-    if _has_type(schema, 'boolean'):
+    if _has_type(schema, "boolean"):
         if not isinstance(current_value, bool):
             current_value = False
         return [not current_value]
 
-    enum_values = schema.get('enum')
+    enum_values = schema.get("enum")
     if isinstance(enum_values, list) and enum_values:
         if current_value not in enum_values:
             current_value = enum_values[0]
         return [enum_value for enum_value in enum_values if enum_value != current_value]
 
-    if (_has_type(schema, 'integer') or _has_type(schema, 'number')) and isinstance(
-        current_value, int | float
-    ):
+    if (_has_type(schema, "integer") or _has_type(schema, "number")) and isinstance(current_value, int | float):
         candidates: list[Any] = []
-        minimum = schema.get('minimum')
-        maximum = schema.get('maximum')
+        minimum = schema.get("minimum")
+        maximum = schema.get("maximum")
 
         if isinstance(minimum, int | float) and minimum != current_value:
             candidates.append(minimum)
@@ -146,7 +143,7 @@ def _candidate_values(schema: dict[str, Any], current_value: Any) -> list[Any]:
             candidates.append(maximum)
 
         if not candidates:
-            step = 1 if _has_type(schema, 'integer') else 0.5
+            step = 1 if _has_type(schema, "integer") else 0.5
             next_value = current_value + step
             if maximum is None or next_value <= maximum:
                 candidates.append(next_value)
@@ -169,24 +166,27 @@ def _collect_mutations(
             mutations.append(Mutation(path=path, value=candidate))
         return mutations
 
-    if _has_type(schema, 'array'):
-        items_schema = schema.get('items')
+    if _has_type(schema, "array"):
+        items_schema = schema.get("items")
         if (
             isinstance(items_schema, dict)
             and isinstance(current_value, list)
             and current_value
-            and isinstance(items_schema.get('enum'), list)
+            and isinstance(items_schema.get("enum"), list)
         ):
             current_item = current_value[0]
             for candidate in _candidate_values(items_schema, current_item):
                 mutations.append(Mutation(path=path + (0,), value=candidate))
         return mutations
 
-    properties = schema.get('properties')
-    if _has_type(schema, 'object') or isinstance(properties, dict):
+    properties = schema.get("properties")
+    if _has_type(schema, "object") or isinstance(properties, dict):
         current_object = current_value if isinstance(current_value, dict) else {}
-        for key in sorted((properties or {}).keys()):
-            sub_schema = properties[key]
+        if not isinstance(properties, dict):
+            return mutations
+        for key, sub_schema in sorted(properties.items()):
+            if not isinstance(sub_schema, dict):
+                continue
             sub_value = current_object.get(key, _default_for_schema(sub_schema))
             mutations.extend(_collect_mutations(sub_schema, sub_value, path + (key,)))
 
@@ -195,7 +195,7 @@ def _collect_mutations(
 
 def _set_nested_value(payload: dict[str, Any], path: PathValue, value: Any) -> None:
     if not path:
-        msg = 'Cannot mutate root payload without a path.'
+        msg = "Cannot mutate root payload without a path."
         raise ValueError(msg)
 
     cursor: Any = payload
@@ -204,7 +204,7 @@ def _set_nested_value(payload: dict[str, Any], path: PathValue, value: Any) -> N
 
         if isinstance(token, int):
             if not isinstance(cursor, list):
-                msg = f'Expected list at path segment {token!r}'
+                msg = f"Expected list at path segment {token!r}"
                 raise ValueError(msg)
             while len(cursor) <= token:
                 cursor.append([] if isinstance(next_token, int) else {})
@@ -212,7 +212,7 @@ def _set_nested_value(payload: dict[str, Any], path: PathValue, value: Any) -> N
             continue
 
         if not isinstance(cursor, dict):
-            msg = f'Expected object at path segment {token!r}'
+            msg = f"Expected object at path segment {token!r}"
             raise ValueError(msg)
 
         if token not in cursor or not isinstance(cursor[token], dict | list):
@@ -223,7 +223,7 @@ def _set_nested_value(payload: dict[str, Any], path: PathValue, value: Any) -> N
     last_token = path[-1]
     if isinstance(last_token, int):
         if not isinstance(cursor, list):
-            msg = f'Expected list at path segment {last_token!r}'
+            msg = f"Expected list at path segment {last_token!r}"
             raise ValueError(msg)
         while len(cursor) <= last_token:
             cursor.append(None)
@@ -231,16 +231,16 @@ def _set_nested_value(payload: dict[str, Any], path: PathValue, value: Any) -> N
         return
 
     if not isinstance(cursor, dict):
-        msg = f'Expected object at path segment {last_token!r}'
+        msg = f"Expected object at path segment {last_token!r}"
         raise ValueError(msg)
 
     cursor[last_token] = value
 
 
 def _mutation_slug(mutation: Mutation) -> str:
-    path_label = '-'.join(str(chunk) for chunk in mutation.path)
+    path_label = "-".join(str(chunk) for chunk in mutation.path)
     value_label = str(mutation.value).lower()
-    return _slugify(f'{path_label}-{value_label}')
+    return _slugify(f"{path_label}-{value_label}")
 
 
 def generate_variants_for_schema(
@@ -251,9 +251,7 @@ def generate_variants_for_schema(
 ) -> list[Variant]:
     max_variants = max(1, max_variants)
 
-    variants: list[Variant] = [
-        Variant(name='control', slug='control', config=copy.deepcopy(default_section))
-    ]
+    variants: list[Variant] = [Variant(name="control", slug="control", config=copy.deepcopy(default_section))]
     if max_variants == 1:
         return variants
 
@@ -271,7 +269,7 @@ def generate_variants_for_schema(
     deduped_mutations.sort(key=lambda item: (item.path, _stable_json(item.value)))
 
     seen_configs = {_stable_json(variants[0].config)}
-    seen_slugs = {'control'}
+    seen_slugs = {"control"}
 
     for mutation in deduped_mutations:
         if len(variants) >= max_variants:
@@ -291,14 +289,14 @@ def generate_variants_for_schema(
         slug = base_slug
         suffix = 2
         while slug in seen_slugs:
-            slug = f'{base_slug}-{suffix}'
+            slug = f"{base_slug}-{suffix}"
             suffix += 1
 
         seen_configs.add(config_fingerprint)
         seen_slugs.add(slug)
         variants.append(
             Variant(
-                name=slug.replace('-', '_'),
+                name=slug.replace("-", "_"),
                 slug=slug,
                 config=mutated,
                 mutation=mutation,
@@ -317,7 +315,7 @@ def build_tree_shaken_variants(
     tree_shake: bool,
     config_key_resolver: Callable[[str], str] = snake_to_lower_camel,
 ) -> dict[str, list[Variant]]:
-    schema_properties = config_schema.get('properties', {})
+    schema_properties = config_schema.get("properties", {})
 
     variants_by_type: dict[str, list[Variant]] = {}
     for experiment_type in sorted(set(experiment_types)):
@@ -332,7 +330,7 @@ def build_tree_shaken_variants(
                 max_variants=max_variants_per_type,
             )
         else:
-            variants = [Variant(name='control', slug='control', config=section_default)]
+            variants = [Variant(name="control", slug="control", config=section_default)]
 
         variants_by_type[experiment_type] = variants
 
@@ -340,8 +338,8 @@ def build_tree_shaken_variants(
 
 
 class BaseDjangoVRTSeeder(ABC):
-    auth_profile_name = 'seeded_user'
-    default_viewports = ('desktop', 'mobile')
+    auth_profile_name = "seeded_user"
+    default_viewports = ("desktop", "mobile")
 
     @property
     @abstractmethod
@@ -378,8 +376,8 @@ class BaseDjangoVRTSeeder(ABC):
 
         invalid = sorted(set(include_types) - allowed)
         if invalid:
-            invalid_list = ', '.join(invalid)
-            msg = f'Unknown experiment types: {invalid_list}'
+            invalid_list = ", ".join(invalid)
+            msg = f"Unknown experiment types: {invalid_list}"
             raise ValueError(msg)
 
         return sorted(set(include_types))
@@ -390,28 +388,28 @@ class BaseDjangoVRTSeeder(ABC):
         scenario_id: str,
         url: str,
         tags: list[str],
-        wait_for_selector: str = 'form',
+        wait_for_selector: str = "form",
         wait_for_timeout_ms: int = 700,
         full_page: bool = True,
     ) -> dict[str, Any]:
         return {
-            'id': scenario_id,
-            'url': url,
-            'tags': tags,
-            'auth_profiles': [self.auth_profile_name],
-            'viewports': list(self.default_viewports),
-            'wait_for_selector': wait_for_selector,
-            'wait_for_timeout_ms': wait_for_timeout_ms,
-            'full_page': full_page,
+            "id": scenario_id,
+            "url": url,
+            "tags": tags,
+            "auth_profiles": [self.auth_profile_name],
+            "viewports": list(self.default_viewports),
+            "wait_for_selector": wait_for_selector,
+            "wait_for_timeout_ms": wait_for_timeout_ms,
+            "full_page": full_page,
         }
 
     @staticmethod
     def variant_manifest_entry(variant: Variant) -> dict[str, Any]:
         return {
-            'name': variant.name,
-            'slug': variant.slug,
-            'mutation_path': variant.mutation_path,
-            'mutation_value': variant.mutation.value if variant.mutation else None,
+            "name": variant.name,
+            "slug": variant.slug,
+            "mutation_path": variant.mutation_path,
+            "mutation_value": variant.mutation.value if variant.mutation else None,
         }
 
     @staticmethod
@@ -432,7 +430,7 @@ class BaseDjangoVRTSeeder(ABC):
         User = get_user_model()
         username_field = getattr(User, "USERNAME_FIELD", "username")
 
-        defaults = {"is_staff": is_staff, "is_superuser": is_superuser}
+        defaults: dict[str, Any] = {"is_staff": is_staff, "is_superuser": is_superuser}
         if hasattr(User, "name"):
             defaults["name"] = name
         elif hasattr(User, "first_name"):
@@ -445,10 +443,13 @@ class BaseDjangoVRTSeeder(ABC):
             user.set_password(password)
             changed.append("password")
 
-        for attr, val in [("is_staff", is_staff), ("is_superuser", is_superuser)]:
-            if getattr(user, attr) != val:
-                setattr(user, attr, val)
-                changed.append(attr)
+        # Update is_staff and is_superuser if needed
+        if hasattr(user, "is_staff") and is_staff != user.is_staff:
+            user.is_staff = is_staff
+            changed.append("is_staff")
+        if hasattr(user, "is_superuser") and is_superuser != user.is_superuser:
+            user.is_superuser = is_superuser
+            changed.append("is_superuser")
 
         # Common 'is_verified' flag in many custom user models
         if hasattr(user, "is_verified") and not user.is_verified:
@@ -463,8 +464,12 @@ class BaseDjangoVRTSeeder(ABC):
     def ensure_waffle_flag(name: str, everyone: bool = True) -> Any:
         """Idempotently ensure a django-waffle flag exists and is set for everyone."""
         try:
-            from waffle.models import Flag
+            flag_module = importlib.import_module("waffle.models")
         except ImportError:
+            return None
+
+        Flag = getattr(flag_module, "Flag", None)
+        if Flag is None:
             return None
 
         flag, _ = Flag.objects.get_or_create(name=name)
@@ -484,7 +489,7 @@ class BaseDjangoVRTSeeder(ABC):
 
     def run(self, options: SeedOptions) -> SeedResult:
         if options.max_variants_per_type < 1:
-            msg = 'max_variants_per_type must be at least 1'
+            msg = "max_variants_per_type must be at least 1"
             raise ValueError(msg)
 
         options.scenario_file.parent.mkdir(parents=True, exist_ok=True)
@@ -509,24 +514,22 @@ class BaseDjangoVRTSeeder(ABC):
             variants_by_type=variants_by_type,
         )
 
-        scenario_ids = [scenario['id'] for scenario in build_result.scenarios]
+        scenario_ids = [scenario["id"] for scenario in build_result.scenarios]
         scenario_id_counts = Counter(scenario_ids)
-        duplicates = sorted(
-            scenario_id for scenario_id, count in scenario_id_counts.items() if count > 1
-        )
+        duplicates = sorted(scenario_id for scenario_id, count in scenario_id_counts.items() if count > 1)
         if duplicates:
-            duplicate_preview = ', '.join(duplicates[:5])
-            msg = f'Duplicate scenario ids generated by seeder: {duplicate_preview}'
+            duplicate_preview = ", ".join(duplicates[:5])
+            msg = f"Duplicate scenario ids generated by seeder: {duplicate_preview}"
             raise ValueError(msg)
 
-        scenarios = sorted(build_result.scenarios, key=lambda item: item['id'])
+        scenarios = sorted(build_result.scenarios, key=lambda item: item["id"])
         options.scenario_file.write_text(
             json.dumps(scenarios, indent=2, sort_keys=True),
-            encoding='utf-8',
+            encoding="utf-8",
         )
         options.manifest_file.write_text(
             json.dumps(build_result.manifest, indent=2, sort_keys=True),
-            encoding='utf-8',
+            encoding="utf-8",
         )
 
         return SeedResult(

@@ -5,6 +5,7 @@ import json
 import os
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Literal
 
 from djvrt.models import Lockfile, RunSummary, RunTotals, ScenarioResult
 from djvrt.utils import utcnow
@@ -26,7 +27,7 @@ def build_summary(
     run_id: str,
     lockfile_path: Path,
     lockfile: Lockfile,
-    mode: str,
+    mode: Literal["check", "baseline"],
     results: list[ScenarioResult],
 ) -> RunSummary:
     return RunSummary(
@@ -175,7 +176,7 @@ def write_html_report(path: Path, summary: RunSummary) -> None:
                     ),
                     (
                         "<td>"
-                        f'<div>{html.escape(result.viewport_name)}</div>'
+                        f"<div>{html.escape(result.viewport_name)}</div>"
                         f'<div class="meta-muted">{html.escape(result.auth_profile)}</div>'
                         "</td>"
                     ),
@@ -197,11 +198,7 @@ def write_html_report(path: Path, summary: RunSummary) -> None:
                         "</td>"
                     ),
                     f'<td class="error-cell">{html.escape(result.error or "")}</td>',
-                    (
-                        f'<td><button class="inspect-btn" data-index="{index}" type="button">'
-                        "Inspect"
-                        "</button></td>"
-                    ),
+                    (f'<td><button class="inspect-btn" data-index="{index}" type="button">' "Inspect" "</button></td>"),
                     "</tr>",
                 ]
             )
