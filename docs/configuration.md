@@ -56,6 +56,7 @@ Example:
 timezone = "UTC"
 locale = "en-US"
 js_random_seed = 2026
+always_write_diff_images = false
 ```
 
 ## Performance tuning
@@ -66,6 +67,7 @@ js_random_seed = 2026
 - Use `--retry-regressions 0` or `1` unless your pages are known flaky.
 - Keep `wait_for_selector` specific; broad selectors can delay capture.
 - Passing checks may skip writing diff overlays for speed; `actual` screenshots are still saved and can be approved as baseline.
+- Set `always_write_diff_images = true` if you want diff images for all scenarios, including passes.
 
 ## Example experiments
 

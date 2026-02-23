@@ -84,6 +84,7 @@ This keeps custom logic minimal and avoids per-project forks of VRT infrastructu
 - Run on a stable OS image with controlled fonts
 - Prefer deterministic data hooks (`get_or_create`, fixed identifiers)
 - Set `runtime.js_random_seed` in `djvrt.toml` when frontend code uses `Math.random()`
+- Set `runtime.always_write_diff_images = true` if you need diff overlays for passed scenarios
 
 ## Documentation map
 

@@ -42,6 +42,7 @@ default_mask_selectors = []
 default_hide_selectors = []
 # Optional: make Math.random deterministic in browser captures.
 # js_random_seed = 1337
+always_write_diff_images = false
 
 [data]
 enabled = false

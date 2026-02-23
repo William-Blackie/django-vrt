@@ -248,3 +248,66 @@ def test_compare_against_baseline_parallel_workers_keep_order(tmp_path: Path) ->
     )
 
     assert [result.key for result in results] == ["k1", "k2"]
+
+
+def test_compare_against_baseline_can_always_write_diff_images(tmp_path: Path) -> None:
+    baseline_dir = tmp_path / "baseline"
+    actual_dir = tmp_path / "actual"
+    diff_dir = tmp_path / "diff"
+    baseline_dir.mkdir()
+    actual_dir.mkdir()
+
+    _create_png(baseline_dir / "a--desktop--anonymous--control--k1.png", (255, 255, 255))
+    _create_png(actual_dir / "a--desktop--anonymous--control--k1.png", (255, 255, 255))
+
+    lockfile = Lockfile(
+        lock_version=1,
+        generated_at="2026-01-01T00:00:00Z",
+        config_digest="digest",
+        environment=LockEnvironment(
+            python_version="3.12",
+            platform="test-platform",
+            playwright_version="1.0.0",
+        ),
+        scenarios=[
+            LockedScenario(
+                key="k1",
+                id="a",
+                url="http://example.test/a",
+                viewport_name="desktop",
+                experiment_name="control",
+                width=100,
+                height=100,
+                auth_profile="anonymous",
+                storage_state=None,
+                headers={},
+                threshold=0.001,
+                wait_for_selector=None,
+                wait_for_timeout_ms=0,
+                full_page=True,
+            ),
+        ],
+        hash="hash1234",
+    )
+
+    captures = {
+        "k1": CaptureOutcome(
+            key="k1",
+            status="ok",
+            image_path=str(actual_dir / "a--desktop--anonymous--control--k1.png"),
+        ),
+    }
+
+    results = compare_against_baseline(
+        lockfile,
+        captures=captures,
+        baseline_dir=baseline_dir,
+        diff_dir=diff_dir,
+        pixel_tolerance=0,
+        always_write_diff_images=True,
+    )
+
+    assert len(results) == 1
+    assert results[0].status == "passed"
+    assert results[0].diff_path is not None
+    assert Path(results[0].diff_path).exists()

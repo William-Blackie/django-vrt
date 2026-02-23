@@ -100,6 +100,7 @@ def _compare_scenario(
     baseline_dir: Path,
     diff_dir: Path,
     pixel_tolerance: int,
+    always_write_diff_images: bool,
 ) -> ScenarioResult:
     capture = captures.get(scenario.key)
     if capture is None or capture.status != "ok" or capture.image_path is None:
@@ -122,7 +123,7 @@ def _compare_scenario(
         actual_path,
         diff_path=diff_path,
         pixel_tolerance=pixel_tolerance,
-        diff_threshold=scenario.threshold,
+        diff_threshold=None if always_write_diff_images else scenario.threshold,
     )
     diff_output_path = str(diff_path) if diff_path.exists() else None
 
@@ -174,6 +175,7 @@ def compare_against_baseline(
     pixel_tolerance: int,
     scenario_keys: set[str] | None = None,
     workers: int = 1,
+    always_write_diff_images: bool = False,
 ) -> list[ScenarioResult]:
     diff_dir.mkdir(parents=True, exist_ok=True)
 
@@ -194,6 +196,7 @@ def compare_against_baseline(
                 baseline_dir=baseline_dir,
                 diff_dir=diff_dir,
                 pixel_tolerance=pixel_tolerance,
+                always_write_diff_images=always_write_diff_images,
             )
             for scenario in scenarios
         ]
@@ -207,6 +210,7 @@ def compare_against_baseline(
                 baseline_dir=baseline_dir,
                 diff_dir=diff_dir,
                 pixel_tolerance=pixel_tolerance,
+                always_write_diff_images=always_write_diff_images,
             )
             for scenario in scenarios
         }

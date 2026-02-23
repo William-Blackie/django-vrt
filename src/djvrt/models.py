@@ -40,6 +40,7 @@ class RuntimeConfig(BaseModel):
     default_mask_selectors: list[str] = Field(default_factory=list)
     default_hide_selectors: list[str] = Field(default_factory=list)
     js_random_seed: int | None = Field(default=None, ge=0)
+    always_write_diff_images: bool = False
 
 
 class DiscoveryConfig(BaseModel):
