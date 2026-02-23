@@ -4,16 +4,14 @@ on:
   push:
     tags:
       - "v*.*.*"
-  release:
-    types:
-      - published
-  workflow_dispatch:
 
 jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -26,6 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -42,7 +42,6 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     environment: pypi
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     permissions:
       id-token: write
     steps:

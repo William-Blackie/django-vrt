@@ -13,7 +13,7 @@ The entire `django-vrt` process revolves around a central workflow that ensures 
 
 This workflow is designed to be run repeatedly, especially in a Continuous Integration (CI) environment.
 
-![Workflow Diagram](assets/workflow.png)  *<-- Placeholder for a diagram to be added later*
+<!-- Workflow diagram intentionally omitted until a committed asset is available. -->
 
 ## 1. Discover
 
