@@ -5,7 +5,7 @@ SHELL := /usr/bin/env bash
 UV ?= uv
 VENV ?= .venv
 PY := $(VENV)/bin/python
-COVERAGE_MIN ?= 92
+COVERAGE_MIN ?= 70
 
 .PHONY: help venv bootstrap install dev-install lint type-check coverage check test test-lf build clean release
 

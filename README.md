@@ -1,5 +1,9 @@
 # django-vrt
 
+[![CI](https://github.com/William-Blackie/django-vrt/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/William-Blackie/django-vrt/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/django-vrt.svg)](https://pypi.org/project/django-vrt/)
+[![License](https://img.shields.io/github/license/William-Blackie/django-vrt.svg)](LICENSE)
+
 `django-vrt` (`djvrt`) is a Python-first visual regression testing package for Django platforms.
 
 It is built for large, fast-moving UI systems where you need deterministic screenshots, repeatable CI, and safe baseline promotion.
@@ -140,15 +144,25 @@ The workflow uses GitHub's trusted publisher model for PyPI authentication. No s
 - CI workflow: `examples/github-actions.yml`
 - Seeder adapter template: `examples/django_seed_adapter.py`
 
+## Attribution
+
+If you use this project in a product or service, please include the following
+notice in your documentation or credits: "django-vrt by William Blackie".
+See [NOTICE](NOTICE) for details.
+
 ## Sponsors
 
 This project is developed with support from **[Mabyduck](https://www.mabyduck.com/)** — Evaluating AI-generated audio, images, and videos with human feedback.
 
-<div style="background-color: white; padding: 20px; border-radius: 8px; display: inline-block;">
-  <a href="https://www.mabyduck.com/">
-    <img src="docs/assets/mabyduck_logo.png" alt="Mabyduck Logo" width="350">
-  </a>
-</div>
+<table>
+  <tr>
+    <td bgcolor="white" align="center">
+      <a href="https://www.mabyduck.com/">
+        <img src="docs/assets/mabyduck_logo.png" alt="Mabyduck Logo" width="350">
+      </a>
+    </td>
+  </tr>
+</table>
 
 Special thanks to [Lucas Theis](https://github.com/lucastheis) ([LinkedIn](https://www.linkedin.com/in/lucas-theis-5408109a/)) for enabling this work during business hours. Project maintained by [William Blackie](https://github.com/William-Blackie) ([LinkedIn](https://www.linkedin.com/in/william-blackie/)).
 

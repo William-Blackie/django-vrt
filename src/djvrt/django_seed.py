@@ -73,6 +73,8 @@ class Variant:
 
 def snake_to_lower_camel(value: str) -> str:
     parts = value.split("_")
+    if not parts:
+        return value
     return parts[0] + "".join(item.capitalize() for item in parts[1:])
 
 
