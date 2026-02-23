@@ -6,8 +6,9 @@ UV ?= uv
 VENV ?= .venv
 PY := $(VENV)/bin/python
 COVERAGE_MIN ?= 70
+DOCS_REQUIREMENTS ?= docs/requirements.txt
 
-.PHONY: help venv bootstrap install dev-install lint type-check coverage check test test-lf build clean release
+.PHONY: help venv bootstrap install dev-install lint type-check coverage check test test-lf docs-install docs-serve docs-build build clean release
 
 ifeq ($(filter release,$(MAKECMDGOALS)),release)
 ifndef VERSION
@@ -74,11 +75,26 @@ test: dev-install
 test-lf: dev-install
 	$(UV) run pytest --lf -x
 
+### Docs
+## Install documentation dependencies in .venv
+docs-install: venv
+	$(UV) pip install -r $(DOCS_REQUIREMENTS)
+
+## Serve MkDocs site locally
+docs-serve: docs-install
+	$(UV) run mkdocs serve
+
+## Build MkDocs site output
+docs-build: docs-install
+	$(UV) run mkdocs build --strict
+
 ### Build & Release
 ## Build package artifacts and validate metadata
 build: dev-install
 	$(UV) build
 	$(UV) run twine check dist/*
+
+### Cleanup
 
 ## Remove local build/test artifacts
 clean:

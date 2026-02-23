@@ -1,0 +1,61 @@
+site_name: django-vrt Documentation
+site_description: Python-first visual regression testing for Django platforms
+site_author: William-Blackie
+site_url: https://william-blackie.github.io/django-vrt/
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.instant.loading
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.select
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+  - tables
+
+nav:
+  - Home: index.md
+  - Overview: overview.md
+  - Quickstart: quickstart.md
+  - Configuration: configuration.md
+  - CLI Reference: cli-reference.md
+  - Django Seeding: django-seeding.md
+  - Advanced Workflows: advanced-workflows.md
+  - CI Integration: ci.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/William-Blackie/django-vrt
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/django-vrt/
+
+repo_url: https://github.com/William-Blackie/django-vrt
+repo_name: William-Blackie/django-vrt
+edit_uri: edit/main/docs/
