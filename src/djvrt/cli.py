@@ -434,6 +434,7 @@ def check(
         baseline_dir=baseline_path,
         diff_dir=diff_dir,
         pixel_tolerance=config.runtime.pixel_tolerance,
+        workers=config.runtime.workers,
     )
     compare_elapsed = perf_counter() - compare_started
 
@@ -472,6 +473,7 @@ def check(
             diff_dir=diff_dir,
             pixel_tolerance=config.runtime.pixel_tolerance,
             scenario_keys=failing_keys,
+            workers=config.runtime.workers,
         )
         for retried in retried_results:
             result_by_key[retried.key] = retried

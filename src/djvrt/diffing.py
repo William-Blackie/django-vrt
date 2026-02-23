@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from PIL import Image, ImageChops
@@ -92,6 +93,77 @@ def _build_baseline_missing_result(
     )
 
 
+def _compare_scenario(
+    scenario: LockedScenario,
+    *,
+    captures: dict[str, CaptureOutcome],
+    baseline_dir: Path,
+    diff_dir: Path,
+    pixel_tolerance: int,
+) -> ScenarioResult:
+    capture = captures.get(scenario.key)
+    if capture is None or capture.status != "ok" or capture.image_path is None:
+        error = capture.error if capture else "No capture result for scenario"
+        return _build_capture_error_result(scenario, error)
+
+    baseline_path = baseline_dir / image_filename(scenario)
+    actual_path = Path(capture.image_path)
+    diff_path = diff_dir / image_filename(scenario)
+
+    if not baseline_path.exists():
+        return _build_baseline_missing_result(
+            scenario,
+            actual_path=str(actual_path),
+            baseline_path=baseline_path,
+        )
+
+    mismatch_ratio, same_dimensions = compare_images(
+        baseline_path,
+        actual_path,
+        diff_path=diff_path,
+        pixel_tolerance=pixel_tolerance,
+        diff_threshold=scenario.threshold,
+    )
+
+    if not same_dimensions:
+        _write_dimension_mismatch_diff(baseline_path, actual_path, diff_path)
+        return ScenarioResult(
+            key=scenario.key,
+            id=scenario.id,
+            url=scenario.url,
+            viewport_name=scenario.viewport_name,
+            auth_profile=scenario.auth_profile,
+            experiment_name=scenario.experiment_name,
+            status="dimension_mismatch",
+            passed=False,
+            threshold=scenario.threshold,
+            mismatch_ratio=1.0,
+            baseline_path=str(baseline_path),
+            actual_path=str(actual_path),
+            diff_path=str(diff_path),
+            error="Image dimensions differ",
+        )
+
+    passed = mismatch_ratio <= scenario.threshold
+    status = "passed" if passed else "regression"
+
+    return ScenarioResult(
+        key=scenario.key,
+        id=scenario.id,
+        url=scenario.url,
+        viewport_name=scenario.viewport_name,
+        auth_profile=scenario.auth_profile,
+        experiment_name=scenario.experiment_name,
+        status=status,
+        passed=passed,
+        threshold=scenario.threshold,
+        mismatch_ratio=mismatch_ratio,
+        baseline_path=str(baseline_path),
+        actual_path=str(actual_path),
+        diff_path=str(diff_path),
+    )
+
+
 def compare_against_baseline(
     lockfile: Lockfile,
     *,
@@ -100,86 +172,43 @@ def compare_against_baseline(
     diff_dir: Path,
     pixel_tolerance: int,
     scenario_keys: set[str] | None = None,
+    workers: int = 1,
 ) -> list[ScenarioResult]:
     diff_dir.mkdir(parents=True, exist_ok=True)
 
-    results: list[ScenarioResult] = []
     scenarios = (
         lockfile.scenarios
         if scenario_keys is None
         else [scenario for scenario in lockfile.scenarios if scenario.key in scenario_keys]
     )
+    if not scenarios:
+        return []
 
-    for scenario in scenarios:
-        capture = captures.get(scenario.key)
-        if capture is None or capture.status != "ok" or capture.image_path is None:
-            error = capture.error if capture else "No capture result for scenario"
-            results.append(_build_capture_error_result(scenario, error))
-            continue
-
-        baseline_path = baseline_dir / image_filename(scenario)
-        actual_path = Path(capture.image_path)
-        diff_path = diff_dir / image_filename(scenario)
-
-        if not baseline_path.exists():
-            results.append(
-                _build_baseline_missing_result(
-                    scenario,
-                    actual_path=str(actual_path),
-                    baseline_path=baseline_path,
-                )
+    worker_count = max(1, workers)
+    if worker_count == 1 or len(scenarios) == 1:
+        return [
+            _compare_scenario(
+                scenario,
+                captures=captures,
+                baseline_dir=baseline_dir,
+                diff_dir=diff_dir,
+                pixel_tolerance=pixel_tolerance,
             )
-            continue
+            for scenario in scenarios
+        ]
 
-        mismatch_ratio, same_dimensions = compare_images(
-            baseline_path,
-            actual_path,
-            diff_path=diff_path,
-            pixel_tolerance=pixel_tolerance,
-            diff_threshold=scenario.threshold,
-        )
-
-        if not same_dimensions:
-            _write_dimension_mismatch_diff(baseline_path, actual_path, diff_path)
-            results.append(
-                ScenarioResult(
-                    key=scenario.key,
-                    id=scenario.id,
-                    url=scenario.url,
-                    viewport_name=scenario.viewport_name,
-                    auth_profile=scenario.auth_profile,
-                    experiment_name=scenario.experiment_name,
-                    status="dimension_mismatch",
-                    passed=False,
-                    threshold=scenario.threshold,
-                    mismatch_ratio=1.0,
-                    baseline_path=str(baseline_path),
-                    actual_path=str(actual_path),
-                    diff_path=str(diff_path),
-                    error="Image dimensions differ",
-                )
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        futures = {
+            scenario.key: executor.submit(
+                _compare_scenario,
+                scenario,
+                captures=captures,
+                baseline_dir=baseline_dir,
+                diff_dir=diff_dir,
+                pixel_tolerance=pixel_tolerance,
             )
-            continue
+            for scenario in scenarios
+        }
+        by_key = {key: future.result() for key, future in futures.items()}
 
-        passed = mismatch_ratio <= scenario.threshold
-        status = "passed" if passed else "regression"
-
-        results.append(
-            ScenarioResult(
-                key=scenario.key,
-                id=scenario.id,
-                url=scenario.url,
-                viewport_name=scenario.viewport_name,
-                auth_profile=scenario.auth_profile,
-                experiment_name=scenario.experiment_name,
-                status=status,
-                passed=passed,
-                threshold=scenario.threshold,
-                mismatch_ratio=mismatch_ratio,
-                baseline_path=str(baseline_path),
-                actual_path=str(actual_path),
-                diff_path=str(diff_path),
-            )
-        )
-
-    return results
+    return [by_key[scenario.key] for scenario in scenarios]
