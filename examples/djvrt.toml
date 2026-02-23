@@ -1,0 +1,59 @@
+version = 1
+base_url = "http://localhost:8000"
+
+[paths]
+artifact_dir = ".djvrt"
+scenario_file = ".djvrt/scenarios.json"
+lock_file = "djvrt.lock.json"
+
+[discovery]
+use_sitemap = true
+sitemap_url = "/sitemap.xml"
+use_django_urlconf = true
+include = []
+exclude = ["^/admin", "^/__debug__"]
+max_urls = 400
+
+[runtime]
+workers = 4
+headless = true
+browser_channel = ""
+launch_args = ["--no-sandbox"]
+locale = "en-US"
+timezone = "UTC"
+wait_until = "networkidle"
+navigation_timeout_ms = 45000
+settle_time_ms = 500
+default_mismatch_threshold = 0.001
+pixel_tolerance = 8
+default_full_page = true
+default_mask_selectors = []
+default_hide_selectors = []
+
+[data]
+enabled = false
+loader = ""
+commands = []
+env = {}
+cwd = ""
+phases = ["baseline", "check"]
+fail_on_error = true
+
+[[experiments]]
+name = "control"
+query_params = {}
+headers = {}
+
+[[viewports]]
+name = "desktop"
+width = 1440
+height = 900
+
+[[viewports]]
+name = "mobile"
+width = 390
+height = 844
+
+[[auth_profiles]]
+name = "anonymous"
+storage_state = ""
