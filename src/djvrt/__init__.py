@@ -1,5 +1,7 @@
 """django-vrt package."""
 
+from importlib.metadata import PackageNotFoundError, version
+
 from djvrt.django_seed import (
     BaseDjangoVRTSeeder,
     Mutation,
@@ -25,4 +27,7 @@ __all__ = [
     "snake_to_lower_camel",
 ]
 
-__version__ = "0.2.0"
+try:
+    __version__ = version("django-vrt")
+except PackageNotFoundError:
+    __version__ = "0.0.0+local"
