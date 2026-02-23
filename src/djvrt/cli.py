@@ -438,9 +438,10 @@ def check(
     compare_elapsed = perf_counter() - compare_started
 
     retries_used = 0
+    result_by_key = {result.key: result for result in results}
 
     for attempt in range(retry_regressions):
-        failing_keys = {result.key for result in results if result.status == "regression"}
+        failing_keys = {key for key, result in result_by_key.items() if result.status == "regression"}
         if not failing_keys:
             break
 
@@ -464,14 +465,19 @@ def check(
         captures.update(retry_captures)
 
         retry_compare_started = perf_counter()
-        results = compare_against_baseline(
+        retried_results = compare_against_baseline(
             lockfile,
             captures=captures,
             baseline_dir=baseline_path,
             diff_dir=diff_dir,
             pixel_tolerance=config.runtime.pixel_tolerance,
+            scenario_keys=failing_keys,
         )
+        for retried in retried_results:
+            result_by_key[retried.key] = retried
         compare_elapsed += perf_counter() - retry_compare_started
+
+    results = [result_by_key[scenario.key] for scenario in lockfile.scenarios]
 
     summary = build_summary(
         run_id=final_run_id,

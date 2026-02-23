@@ -28,6 +28,7 @@ def compare_images(
     *,
     diff_path: Path,
     pixel_tolerance: int,
+    diff_threshold: float | None = None,
 ) -> tuple[float, bool]:
     with Image.open(baseline_path) as baseline, Image.open(actual_path) as actual:
         if baseline.size != actual.size:
@@ -41,13 +42,15 @@ def compare_images(
         total_pixels = sum(histogram)
         mismatch_ratio = changed_pixels / total_pixels if total_pixels else 0.0
 
-        mask = grayscale.point(lambda value: 255 if value > pixel_tolerance else 0)
-        actual_rgba = actual.convert("RGBA")
-        red_overlay = Image.new("RGBA", actual_rgba.size, (255, 0, 0, 110))
-        transparent = Image.new("RGBA", actual_rgba.size, (0, 0, 0, 0))
-        highlight = Image.composite(red_overlay, transparent, mask)
-        rendered = Image.alpha_composite(actual_rgba, highlight)
-        rendered.save(diff_path)
+        should_render_diff = diff_threshold is None or mismatch_ratio > diff_threshold
+        if should_render_diff:
+            mask = grayscale.point(lambda value: 255 if value > pixel_tolerance else 0)
+            actual_rgba = actual.convert("RGBA")
+            red_overlay = Image.new("RGBA", actual_rgba.size, (255, 0, 0, 110))
+            transparent = Image.new("RGBA", actual_rgba.size, (0, 0, 0, 0))
+            highlight = Image.composite(red_overlay, transparent, mask)
+            rendered = Image.alpha_composite(actual_rgba, highlight)
+            rendered.save(diff_path)
 
     return mismatch_ratio, True
 
@@ -96,12 +99,18 @@ def compare_against_baseline(
     baseline_dir: Path,
     diff_dir: Path,
     pixel_tolerance: int,
+    scenario_keys: set[str] | None = None,
 ) -> list[ScenarioResult]:
     diff_dir.mkdir(parents=True, exist_ok=True)
 
     results: list[ScenarioResult] = []
+    scenarios = (
+        lockfile.scenarios
+        if scenario_keys is None
+        else [scenario for scenario in lockfile.scenarios if scenario.key in scenario_keys]
+    )
 
-    for scenario in lockfile.scenarios:
+    for scenario in scenarios:
         capture = captures.get(scenario.key)
         if capture is None or capture.status != "ok" or capture.image_path is None:
             error = capture.error if capture else "No capture result for scenario"
@@ -127,6 +136,7 @@ def compare_against_baseline(
             actual_path,
             diff_path=diff_path,
             pixel_tolerance=pixel_tolerance,
+            diff_threshold=scenario.threshold,
         )
 
         if not same_dimensions:

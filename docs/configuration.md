@@ -58,6 +58,14 @@ locale = "en-US"
 js_random_seed = 2026
 ```
 
+## Performance tuning
+
+- Increase `runtime.workers` to match machine/CI CPU capacity.
+- Lower `runtime.settle_time_ms` after confirming page stability.
+- Prefer scenario-level `full_page = false` unless full-page capture is required.
+- Use `--retry-regressions 0` or `1` unless your pages are known flaky.
+- Keep `wait_for_selector` specific; broad selectors can delay capture.
+
 ## Example experiments
 
 ```toml
