@@ -65,6 +65,7 @@ js_random_seed = 2026
 - Prefer scenario-level `full_page = false` unless full-page capture is required.
 - Use `--retry-regressions 0` or `1` unless your pages are known flaky.
 - Keep `wait_for_selector` specific; broad selectors can delay capture.
+- Passing checks may skip writing diff overlays for speed; `actual` screenshots are still saved and can be approved as baseline.
 
 ## Example experiments
 

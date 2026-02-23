@@ -163,6 +163,8 @@ def test_compare_against_baseline_only_recompares_selected_keys(tmp_path: Path) 
 
     assert len(results) == 1
     assert results[0].key == "key1"
+    assert results[0].status == "passed"
+    assert results[0].diff_path is None
 
 
 def test_compare_against_baseline_parallel_workers_keep_order(tmp_path: Path) -> None:

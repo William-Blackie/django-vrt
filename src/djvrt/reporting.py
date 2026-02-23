@@ -147,6 +147,7 @@ def write_html_report(path: Path, summary: RunSummary) -> None:
                 "auth": result.auth_profile,
                 "experiment": result.experiment_name,
                 "status": result.status,
+                "passed": result.passed,
                 "mismatch": mismatch,
                 "threshold": result.threshold,
                 "error": result.error or "",
@@ -402,6 +403,10 @@ def write_html_report(path: Path, summary: RunSummary) -> None:
         background: #e8f0ff;
         border-color: #9eb6e6;
       }}
+      .mode-btn:disabled {{
+        cursor: not-allowed;
+        opacity: 0.5;
+      }}
       .slider-control {{
         display: flex;
         align-items: center;
@@ -409,6 +414,11 @@ def write_html_report(path: Path, summary: RunSummary) -> None:
         font-size: 12px;
         color: var(--muted);
         margin-bottom: 10px;
+      }}
+      .compare-note {{
+        margin: 0 0 10px;
+        font-size: 12px;
+        color: var(--muted);
       }}
       .slider-control input {{ width: 180px; }}
       .pane {{ display: none; }}
@@ -571,6 +581,7 @@ def write_html_report(path: Path, summary: RunSummary) -> None:
               <button class="mode-btn" data-compare-mode="slider" type="button">Slider</button>
               <button class="mode-btn" data-compare-mode="diff" type="button">Diff</button>
             </div>
+            <p id="compare-note" class="compare-note"></p>
             <div class="slider-control" id="slider-control" style="display:none;">
               <span>Baseline / Actual split</span>
               <input id="compare-slider" type="range" min="1" max="99" value="50" />
@@ -631,6 +642,7 @@ def write_html_report(path: Path, summary: RunSummary) -> None:
       const compareEmpty = document.getElementById("compare-empty");
       const compareContent = document.getElementById("compare-content");
       const compareMeta = document.getElementById("compare-meta");
+      const compareNote = document.getElementById("compare-note");
       const sliderControl = document.getElementById("slider-control");
       const compareSlider = document.getElementById("compare-slider");
       const compareSliderValue = document.getElementById("compare-slider-value");
@@ -646,6 +658,9 @@ def write_html_report(path: Path, summary: RunSummary) -> None:
       const linkDiff = document.getElementById("link-diff");
 
       const modeButtons = Array.from(document.querySelectorAll("[data-compare-mode]"));
+      const modeButtonsByName = Object.fromEntries(
+        modeButtons.map((button) => [button.dataset.compareMode, button])
+      );
       const panes = {{
         side: document.getElementById("pane-side"),
         slider: document.getElementById("pane-slider"),
@@ -669,7 +684,54 @@ def write_html_report(path: Path, summary: RunSummary) -> None:
         return status !== "passed";
       }}
 
+      function activeMode() {{
+        const active = modeButtons.find((button) => button.classList.contains("active"));
+        return active ? active.dataset.compareMode : "side";
+      }}
+
+      function firstEnabledMode() {{
+        const ordered = ["side", "slider", "diff"];
+        for (const mode of ordered) {{
+          const button = modeButtonsByName[mode];
+          if (button && !button.disabled) {{
+            return mode;
+          }}
+        }}
+        return "side";
+      }}
+
+      function updateModeAvailability(entry) {{
+        const hasBaseline = Boolean(entry.baseline);
+        const hasActual = Boolean(entry.actual);
+        const hasDiff = Boolean(entry.diff);
+
+        modeButtonsByName.side.disabled = !(hasBaseline && hasActual);
+        modeButtonsByName.slider.disabled = !(hasBaseline && hasActual);
+        modeButtonsByName.diff.disabled = !hasDiff;
+
+        if (!hasDiff) {{
+          if (entry.passed) {{
+            compareNote.textContent =
+              "No diff image generated for this passed scenario. Baseline and actual images are available.";
+          }} else {{
+            compareNote.textContent = "No diff image available for this scenario.";
+          }}
+        }} else {{
+          compareNote.textContent = "";
+        }}
+
+        const mode = activeMode();
+        if (modeButtonsByName[mode] && modeButtonsByName[mode].disabled) {{
+          setMode(firstEnabledMode());
+        }}
+      }}
+
       function setMode(mode) {{
+        const targetButton = modeButtonsByName[mode];
+        if (!targetButton || targetButton.disabled) {{
+          return;
+        }}
+
         modeButtons.forEach((button) => {{
           button.classList.toggle("active", button.dataset.compareMode === mode);
         }});
@@ -743,6 +805,7 @@ def write_html_report(path: Path, summary: RunSummary) -> None:
         setLink(linkBaseline, entry.baseline, "Open baseline");
         setLink(linkActual, entry.actual, "Open actual");
         setLink(linkDiff, entry.diff, "Open diff");
+        updateModeAvailability(entry);
 
         if (scrollIntoView) {{
           row.scrollIntoView({{ block: "center", behavior: "smooth" }});

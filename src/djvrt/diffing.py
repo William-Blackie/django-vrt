@@ -124,6 +124,7 @@ def _compare_scenario(
         pixel_tolerance=pixel_tolerance,
         diff_threshold=scenario.threshold,
     )
+    diff_output_path = str(diff_path) if diff_path.exists() else None
 
     if not same_dimensions:
         _write_dimension_mismatch_diff(baseline_path, actual_path, diff_path)
@@ -160,7 +161,7 @@ def _compare_scenario(
         mismatch_ratio=mismatch_ratio,
         baseline_path=str(baseline_path),
         actual_path=str(actual_path),
-        diff_path=str(diff_path),
+        diff_path=diff_output_path,
     )
 
 
