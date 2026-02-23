@@ -23,11 +23,11 @@ fail_on_error = true
 
 ## Option 2: package seeder framework (`BaseDjangoVRTSeeder`)
 
-For complex experiment systems, build a small adapter module in the consumer project.
+For complex experiment systems, create a small adapter module in the consumer project.
 
 ```python
 from typing import Any
-from djvrt.django_seed import BaseDjangoVRTSeeder, SeedBuildResult, SeedOptions
+from djvrt.django_seed import BaseDjangoVRTSeeder, SeedBuildResult, SeedOptions, Variant
 
 
 class ProjectSeeder(BaseDjangoVRTSeeder):
@@ -48,49 +48,64 @@ class ProjectSeeder(BaseDjangoVRTSeeder):
         options: SeedOptions,
         experiment_types: list[str],
         default_config: dict[str, Any],
-        variants_by_type: dict[str, list[Any]],
+        variants_by_type: dict[str, list[Variant]],
     ) -> SeedBuildResult:
-        from django.db import transaction
-        from django.urls import reverse
-        from myproject.models import Experiment, Project
-
-        with transaction.atomic():
-            # Use helpers to reduce boilerplate
-            user = self.ensure_user(
-                email=options.get_extra("seed_email", "vrt@local"),
-                password=options.get_extra("seed_password", "secret"),
+        # 1. Upsert deterministic DB rows (project, datasets, experiments, sessions)
+        # 2. Build deterministic scenario entries with stable IDs
+        scenarios = [
+            self.build_scenario_entry(
+                scenario_id="xp-acr-audio-control",
+                url="/xp/latest/acr_audio/123/456/",
+                tags=["vrt", "xp", "acr_audio", "control"],
+                wait_for_selector="body",
             )
-            self.ensure_waffle_flag("can_run_vrt")
-            
-            project, _ = Project.objects.get_or_create(id=99, defaults={"name": "VRT"})
-            
-            # ... seeding logic using get_stable_id and variant_manifest_entry
-            # ... return SeedBuildResult
-            ...
+        ]
+
+        manifest = {
+            "seed": {
+                "tree_shake": options.tree_shake,
+                "max_variants_per_type": options.max_variants_per_type,
+            },
+            "types": [
+                {
+                    "experiment_type": "acr_audio",
+                    "variant_count": len(variants_by_type["acr_audio"]),
+                }
+            ],
+        }
+
+        return SeedBuildResult(
+            project_id=99,
+            project_sid="proj_demo",
+            experiment_count=1,
+            scenarios=scenarios,
+            manifest=manifest,
+        )
 ```
 
 ## CLI hooks
 
-When running via `django_seed_cli.py`, you can provide setup and options-builder hooks:
+When running via `django_seed_cli.py`, you can provide setup and options-builder hooks.
 
 ```python
 # myproject/vrt_seed.py
-from pathlib import Path
-from djvrt.utils import ensure_django_ready
 from djvrt.django_seed import SeedOptions
 
 def setup_django(settings: str | None) -> None:
-    # Convenient helper for setting up Django app/DB context
-    ensure_django_ready(settings)
+    import os
+    import django
+
+    if settings:
+        os.environ["DJANGO_SETTINGS_MODULE"] = settings
+    django.setup()
 
 def build_seed_options(**kwargs) -> SeedOptions:
-    # Custom options with extra_context loaded from env or defaults
     import os
     return SeedOptions(
         **kwargs,
         extra_context={
             "seed_email": os.environ.get("VRT_EMAIL", "vrt@local"),
-            "assets_root": Path(__file__).parent / "static",
+            "seed_password": os.environ.get("VRT_PASSWORD", "secret"),
         }
     )
 ```
@@ -108,7 +123,8 @@ python -m djvrt.django_seed_cli \
   --max-variants-per-type 24
 ```
 
-`--option key=value` flags are automatically passed into `SeedOptions.extra_context` if no options-builder is provided, or into the `options_builder` kwargs.
+If you pass `--option key=value`, you must also pass `--options-builder`.
+The options builder receives those values and can map them into `SeedOptions.extra_context` (or a custom `SeedOptions` subclass).
 
 ## Tree-shaking behavior
 

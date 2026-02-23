@@ -29,7 +29,7 @@ Useful knobs:
 - `--include-type <type>` (repeatable): focus on a subset.
 - `--max-variants-per-type N`: cap variant count per type.
 - `--no-tree-shake`: control-only mode.
-- `--option key=value`: adapter-specific config overrides.
+- `--option key=value`: adapter-specific overrides (requires `--options-builder`).
 
 ## 3. Build lockfile and baseline/check
 

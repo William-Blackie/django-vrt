@@ -28,6 +28,12 @@ This creates:
 - `djvrt.toml`
 - `.djvrt/scenarios.json`
 
+Recommended runtime hardening in `djvrt.toml`:
+
+- `timezone = "UTC"`
+- `locale = "en-US"`
+- `js_random_seed = 2026` (if frontend code uses `Math.random()`)
+
 ## Build first baseline
 
 ```bash

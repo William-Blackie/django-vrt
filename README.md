@@ -41,6 +41,15 @@ uv run djvrt check
 
 Artifacts are stored in `.djvrt/` by default.
 
+## Getting Started Checklist
+
+1. Install package + Chromium.
+2. Generate config/scenarios with `djvrt init`.
+3. Discover routes (or provide deterministic seeded scenarios).
+4. Build `djvrt.lock.json` with `djvrt lock`.
+5. Capture baseline once with `djvrt baseline`.
+6. Gate PRs using `djvrt check`.
+
 ## CLI commands
 
 - `djvrt init`: create `djvrt.toml` and starter scenarios
@@ -80,7 +89,6 @@ This keeps custom logic minimal and avoids per-project forks of VRT infrastructu
 - `/docs/django-seeding.md`
 - `/docs/ci.md`
 - `/docs/local-playbook.md`
-- `/slides.md`
 
 ## Examples
 

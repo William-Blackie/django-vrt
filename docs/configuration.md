@@ -49,6 +49,15 @@ The hash drives baseline storage at `.djvrt/baselines/<hash>/`.
 - Set explicit scenario thresholds for noisy pages.
 - Keep auth-state users deterministic and free of unstable UI settings.
 
+Example:
+
+```toml
+[runtime]
+timezone = "UTC"
+locale = "en-US"
+js_random_seed = 2026
+```
+
 ## Example experiments
 
 ```toml

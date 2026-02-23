@@ -5,4 +5,3 @@
 - [Django Seeding](django-seeding.md)
 - [CI Integration](ci.md)
 - [Local Playbook](local-playbook.md)
-- [DjangoCon Talk Slides](../slides.md)
