@@ -13,7 +13,7 @@ from djvrt.django_seed import BaseDjangoVRTSeeder, SeedBuildResult, SeedOptions
 class ExampleSeeder(BaseDjangoVRTSeeder):
     @property
     def all_experiment_types(self) -> list[str]:
-        return ['acr_audio', 'pairwise_image']
+        return ["acr_audio", "pairwise_image"]
 
     @property
     def config_schema(self) -> dict[str, Any]:
