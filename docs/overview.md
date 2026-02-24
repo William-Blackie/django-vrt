@@ -65,10 +65,8 @@ When inspecting a regression, you can switch between several visualization modes
 - **Slider**: Use a draggable vertical line to reveal the difference between images in real-time.
 - **Overlay**: Superimpose the two images using a `difference` blend mode. Matching pixels appear black, while any changes are highlighted in vibrant colors.
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-  <img src="assets/screenshots/report-slider.png" alt="Slider Mode">
-  <img src="assets/screenshots/report-overlay.png" alt="Overlay Mode">
-</div>
+![Slider Mode](assets/screenshots/report-slider.png){ style="width: 48%; display: inline-block; margin-right: 2%;" }
+![Overlay Mode](assets/screenshots/report-overlay.png){ style="width: 48%; display: inline-block;" }
 
 - **Diff**: View a pre-generated heatmap where differences are highlighted in red.
 
