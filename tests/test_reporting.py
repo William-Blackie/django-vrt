@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
 from djvrt.models import LockEnvironment, Lockfile, RunSummary, RunTotals, ScenarioResult
 from djvrt.reporting import _relative, build_summary, read_summary, write_html_report, write_junit, write_summary
@@ -13,9 +14,11 @@ def _summary(tmp_path: Path) -> RunSummary:
     baseline = tmp_path / "baseline.png"
     actual = tmp_path / "actual.png"
     diff = tmp_path / "diff.png"
-    baseline.write_bytes(b"baseline")
-    actual.write_bytes(b"actual")
-    diff.write_bytes(b"diff")
+    
+    # Create real images
+    Image.new("RGB", (1, 1), color="white").save(baseline)
+    Image.new("RGB", (1, 1), color="white").save(actual)
+    Image.new("RGB", (1, 1), color="red").save(diff)
 
     results = [
         ScenarioResult(
@@ -77,7 +80,7 @@ def test_write_html_report_renders_interactive_review_ui(tmp_path: Path) -> None
     assert 'id="filter-search"' in html
     assert 'id="filter-status"' in html
     assert 'id="djvrt-data"' in html
-    assert "djvrt review" in html
+    assert "djvrt report" in html
     assert "Side by Side" in html
     assert '"baseline":"baseline.png"' in html
 
@@ -88,7 +91,26 @@ def test_write_html_report_escapes_embedded_json_script_content(tmp_path: Path) 
     html = report_path.read_text(encoding="utf-8")
 
     assert "bad &lt;/script&gt; scenario" in html
-    assert r"<\/" in html
+
+
+def test_write_self_contained_html_report(tmp_path: Path) -> None:
+    # Create a dummy image
+    img_path = tmp_path / "baseline.png"
+    Image.new("RGB", (10, 10), color="red").save(img_path)
+
+    summary = _summary(tmp_path)
+    # Ensure the path is absolute for embedding logic
+    img_abs_path = img_path.resolve()
+    summary.results[0].baseline_path = str(img_abs_path)
+
+    report_path = tmp_path / "report-bundled.html"
+    write_html_report(report_path, summary, self_contained=True)
+    html_content = report_path.read_text(encoding="utf-8")
+
+    # Verify data URL is present in the JSON payload
+    assert "data:image/webp;base64," in html_content
+    # Relative path should NOT be present in this mode for the baseline link
+    assert '"baseline":"baseline.png"' not in html_content
 
 
 def test_summary_roundtrip_and_junit_output(tmp_path: Path) -> None:

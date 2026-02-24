@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import base64
 import html
 import json
 import os
 import xml.etree.ElementTree as ET
+from io import BytesIO
 from pathlib import Path
 from typing import Any, Literal
+
+from PIL import Image
 
 from djvrt.models import Lockfile, RunSummary, RunTotals, ScenarioResult
 from djvrt.report_templates import get_report_html
@@ -47,7 +51,6 @@ def build_summary(
 def write_summary(path: Path, summary: RunSummary) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = summary.model_dump(mode="json")
-    # indent was misplaced in write_text, should be in json.dumps
     path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
 
 
@@ -106,7 +109,35 @@ def _relative(path: str | None, report_dir: Path) -> str:
         return path
 
 
-def write_html_report(path: Path, summary: RunSummary) -> None:
+def _file_to_data_url(path: str | None, compress: bool = True) -> str:
+    if not path:
+        return ""
+
+    p = Path(path)
+    if not p.exists():
+        return ""
+
+    try:
+        if compress:
+            # Convert to WebP with moderate compression for report thumbnails/previews
+            with Image.open(p) as img:
+                buffer = BytesIO()
+                img.save(buffer, format="WEBP", quality=75, method=6)
+                data = buffer.getvalue()
+                mime = "image/webp"
+        else:
+            data = p.read_bytes()
+            ext = p.suffix.lower().lstrip(".")
+            mime = f"image/{ext}" if ext != "jpg" else "image/jpeg"
+
+        b64 = base64.b64encode(data).decode("utf-8")
+        return f"data:{mime};base64,{b64}"
+    except Exception:
+        # Fallback to empty if anything goes wrong during conversion
+        return ""
+
+
+def write_html_report(path: Path, summary: RunSummary, self_contained: bool = False) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
     rows: list[str] = []
@@ -114,9 +145,14 @@ def write_html_report(path: Path, summary: RunSummary) -> None:
     report_dir = path.parent
 
     for index, result in enumerate(summary.results):
-        baseline_link = _relative(result.baseline_path, report_dir)
-        actual_link = _relative(result.actual_path, report_dir)
-        diff_link = _relative(result.diff_path, report_dir)
+        if self_contained:
+            baseline_link = _file_to_data_url(result.baseline_path)
+            actual_link = _file_to_data_url(result.actual_path)
+            diff_link = _file_to_data_url(result.diff_path)
+        else:
+            baseline_link = _relative(result.baseline_path, report_dir)
+            actual_link = _relative(result.actual_path, report_dir)
+            diff_link = _relative(result.diff_path, report_dir)
 
         mismatch_pct = f"{result.mismatch_ratio * 100:.2f}%" if result.mismatch_ratio is not None else "0.00%"
 
@@ -166,7 +202,7 @@ def write_html_report(path: Path, summary: RunSummary) -> None:
               <td>
                 <div style="display: flex; gap: 4px;">
                    <button class="btn" style="padding: 4px 8px; font-size: 11px;"
-                           onclick="event.stopPropagation(); window.open('{actual_link}', '_blank')">View</button>
+                           onclick="event.stopPropagation(); const w = window.open(); w.document.write('<img src=\\'{actual_link}\\' style=\\'max-width:100%\\'>');">View</button>
                 </div>
               </td>
             </tr>

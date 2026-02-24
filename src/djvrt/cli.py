@@ -7,7 +7,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 import typer
 from rich.console import Console
@@ -34,6 +34,8 @@ from djvrt.paths import (
     scenario_file_path,
 )
 from djvrt.reporting import (
+    RunSummary,
+    RunTotals,
     build_summary,
     read_summary,
     write_html_report,
@@ -306,6 +308,11 @@ def baseline(
         "--skip-data-prepare",
         help="Skip configured data preparation hooks",
     ),
+    self_contained: bool = typer.Option(
+        False,
+        "--self-contained",
+        help="Embed all images as Base64 in the HTML report",
+    ),
 ) -> None:
     """Capture baseline images for the current lockfile."""
     started = perf_counter()
@@ -364,7 +371,7 @@ def baseline(
 
     write_summary(summary_path, summary)
     write_junit(junit_path, summary)
-    write_html_report(html_path, summary)
+    write_html_report(html_path, summary, self_contained=self_contained)
 
     console.print(f"[green]Baseline captured:[/green] {baseline_path}")
     console.print(f"summary={summary_path}")
@@ -407,6 +414,12 @@ def check(
         False,
         "--skip-data-prepare",
         help="Skip configured data preparation hooks",
+    ),
+    title: str | None = typer.Option(None, "--title", help="Custom title for the HTML report"),
+    self_contained: bool = typer.Option(
+        False,
+        "--self-contained",
+        help="Embed all images as Base64 in the HTML report",
     ),
 ) -> None:
     """Capture current screenshots and compare to baseline."""
@@ -515,6 +528,7 @@ def check(
         lockfile=lockfile,
         mode="check",
         results=results,
+        report_title=title,
     )
 
     summary_path = current_run_dir / "summary.json"
@@ -523,7 +537,7 @@ def check(
 
     write_summary(summary_path, summary)
     write_junit(junit_path, summary)
-    write_html_report(html_path, summary)
+    write_html_report(html_path, summary, self_contained=self_contained)
 
     console.print(f"run_id={final_run_id}")
     console.print(f"report={html_path}")
@@ -574,6 +588,12 @@ def report(
         "--open",
         help="Open generated HTML report in default browser",
     ),
+    title: str | None = typer.Option(None, "--title", help="Override title for the HTML report"),
+    self_contained: bool = typer.Option(
+        False,
+        "--self-contained",
+        help="Embed all images as Base64 in the HTML report",
+    ),
 ) -> None:
     """Regenerate reports from an existing summary.json."""
     config_path, config = _load_config(config_path)
@@ -591,11 +611,13 @@ def report(
         raise typer.Exit(code=2)
 
     summary = read_summary(summary_path)
+    if title:
+        summary.report_title = title
 
     html_path = html_file.resolve() if html_file else summary_path.parent / "report.html"
     junit_path = junit_file.resolve() if junit_file else summary_path.parent / "junit.xml"
 
-    write_html_report(html_path, summary)
+    write_html_report(html_path, summary, self_contained=self_contained)
     write_junit(junit_path, summary)
 
     console.print(f"[green]HTML:[/green] {html_path}")
@@ -726,6 +748,134 @@ def auth_state_cmd(
         raise typer.Exit(code=2) from exc
 
     console.print(f"[green]Wrote auth storage_state:[/green] {output_path}")
+
+
+@app.command()
+def example_report(
+    output: Path = typer.Option(Path(".djvrt/runs/example/report.html"), "--output", help="Output path for the report"),
+    open_report: bool = typer.Option(True, "--open/--no-open", help="Open the report in the browser"),
+    title: str | None = typer.Option(None, "--title", help="Custom title for the HTML report"),
+    self_contained: bool = typer.Option(
+        False,
+        "--self-contained",
+        help="Embed all images as Base64 in the HTML report",
+    ),
+) -> None:
+    """Generate a mock report with bundled raccoon images for UI iteration."""
+    import shutil
+
+    output = output.resolve()
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    # Local assets source
+    assets_src = Path(__file__).parent / "assets" / "example"
+    if not assets_src.exists():
+        console.print(f"[red]Example assets not found at:[/red] {assets_src}")
+        raise typer.Exit(code=2)
+
+    # Copy to report directory
+    dummy_dir = output.parent / "images"
+    dummy_dir.mkdir(parents=True, exist_ok=True)
+
+    for name in ["baseline.png", "actual.png", "diff.png"]:
+        src = assets_src / name
+        if src.exists():
+            shutil.copy2(src, dummy_dir / name)
+
+    results = [
+        ScenarioResult(
+            key="scen-1",
+            id="Home Page",
+            url="/",
+            viewport_name="desktop",
+            auth_profile="anonymous",
+            experiment_name="control",
+            status="passed",
+            passed=True,
+            threshold=0.01,
+            mismatch_ratio=0.0,
+            baseline_path=str(dummy_dir / "baseline.png"),
+            actual_path=str(dummy_dir / "baseline.png"),
+        ),
+        ScenarioResult(
+            key="scen-2",
+            id="Product Detail",
+            url="/products/1/",
+            viewport_name="mobile",
+            auth_profile="anonymous",
+            experiment_name="variant-a",
+            status="regression",
+            passed=False,
+            threshold=0.01,
+            mismatch_ratio=0.0542,
+            baseline_path=str(dummy_dir / "baseline.png"),
+            actual_path=str(dummy_dir / "actual.png"),
+            diff_path=str(dummy_dir / "diff.png"),
+        ),
+        ScenarioResult(
+            key="scen-3",
+            id="Login Page",
+            url="/accounts/login/",
+            viewport_name="desktop",
+            auth_profile="anonymous",
+            experiment_name="control",
+            status="capture_error",
+            passed=False,
+            threshold=0.01,
+            error="Navigation timeout of 30000ms exceeded",
+        ),
+        ScenarioResult(
+            key="scen-4",
+            id="Dashboard",
+            url="/dashboard/",
+            viewport_name="desktop",
+            auth_profile="authenticated",
+            experiment_name="control",
+            status="baseline_missing",
+            passed=False,
+            threshold=0.01,
+            actual_path=str(dummy_dir / "actual.png"),
+        ),
+        ScenarioResult(
+            key="scen-5",
+            id="Settings",
+            url="/settings/",
+            viewport_name="desktop",
+            auth_profile="authenticated",
+            experiment_name="control",
+            status="dimension_mismatch",
+            passed=False,
+            threshold=0.01,
+            mismatch_ratio=1.0,
+            error="Baseline (1024x768) != Actual (1024x1200)",
+            baseline_path=str(dummy_dir / "baseline.png"),
+            actual_path=str(dummy_dir / "actual.png"),
+        ),
+    ]
+
+    summary = RunSummary(
+        run_id="example-run",
+        report_title=title,
+        lock_hash="mock-hash-123",
+        lock_file="djvrt.lock.json",
+        mode="check",
+        created_at=datetime.now(UTC),
+        totals=RunTotals(
+            total=len(results),
+            passed=1,
+            regressions=1,
+            capture_errors=1,
+            baseline_missing=1,
+            dimension_mismatches=1,
+        ),
+        results=results,
+    )
+
+    write_html_report(output, summary, self_contained=self_contained)
+    console.print(f"[green]Example report generated at:[/green] {output}")
+
+    if open_report:
+        _open_report(output)
 
 
 if __name__ == "__main__":

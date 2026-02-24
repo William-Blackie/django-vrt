@@ -45,6 +45,7 @@ Captures the initial "golden" baseline images for the current lockfile.
 | `--force` | Overwrite an existing baseline for the current lock hash. |
 | `--open` | Open the generated HTML report in your browser after the run. |
 | `--skip-data-prepare` | Skip the data preparation hooks. |
+| `--self-contained` | Embed all images as Base64 in the HTML report (portable single file). |
 
 ## `check`
 
@@ -59,6 +60,7 @@ Captures a new set of screenshots and compares them against the baseline, report
 | `--retry-regressions <n>` | The number of times to retry capturing and comparing a scenario that fails with a regression. Defaults to `1`. |
 | `--skip-data-prepare` | Skip the data preparation hooks. |
 | `--title <text>` | A custom title to display in the HTML report. |
+| `--self-contained` | Embed all images as Base64 in the HTML report (portable single file). |
 
 ## `report`
 
@@ -73,6 +75,7 @@ Regenerates HTML and JUnit reports from an existing `summary.json` file.
 | `--junit <path>` | The output path for the JUnit XML file. |
 | `--open` | Open the generated HTML report in your browser. |
 | `--title <text>` | A custom title for the HTML report. |
+| `--self-contained` | Embed all images as Base64 in the HTML report (portable single file). |
 
 ## `approve`
 
