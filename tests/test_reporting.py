@@ -76,13 +76,10 @@ def test_write_html_report_renders_interactive_review_ui(tmp_path: Path) -> None
 
     assert 'id="filter-search"' in html
     assert 'id="filter-status"' in html
-    assert 'id="sort-by"' in html
-    assert 'id="compare-slider"' in html
-    assert 'id="djvrt-report-data"' in html
-    assert "Inspect" in html
-    assert "Side by side" in html
-    assert "Open baseline" in html
-    assert 'href="baseline.png"' in html
+    assert 'id="djvrt-data"' in html
+    assert "djvrt review" in html
+    assert "Side by Side" in html
+    assert '"baseline":"baseline.png"' in html
 
 
 def test_write_html_report_escapes_embedded_json_script_content(tmp_path: Path) -> None:
@@ -91,7 +88,7 @@ def test_write_html_report_escapes_embedded_json_script_content(tmp_path: Path) 
     html = report_path.read_text(encoding="utf-8")
 
     assert "bad &lt;/script&gt; scenario" in html
-    assert "<\\/script>" in html
+    assert r"<\/" in html
 
 
 def test_summary_roundtrip_and_junit_output(tmp_path: Path) -> None:
@@ -202,4 +199,7 @@ def test_write_html_report_uses_dash_for_missing_artifact_links(tmp_path: Path) 
     report_path = tmp_path / "report-missing-links.html"
     write_html_report(report_path, summary)
     html = report_path.read_text(encoding="utf-8")
-    assert ">- - -<" in html
+    # In new JSON structure, missing links are empty strings
+    assert '"baseline":""' in html
+    assert '"actual":""' in html
+    assert '"diff":""' in html

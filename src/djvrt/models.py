@@ -221,6 +221,7 @@ class RunSummary(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     run_id: str
+    report_title: str | None = None
     lock_hash: str
     lock_file: str
     mode: Literal["check", "baseline"]

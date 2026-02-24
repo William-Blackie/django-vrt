@@ -51,6 +51,34 @@ The `check` command is what you will run most often. It re-runs the entire test 
 
 If there are any differences, the check will fail, and `djvrt` will generate a detailed report (`report.html`) that shows you every difference.
 
+## Interactive Review UI
+
+`djvrt` generates a modern, clean HTML report for reviewing test results. This UI is designed to help you quickly identify and analyze visual regressions.
+
+![djvrt report overview](assets/screenshots/report-overview.png)
+
+### Comparison Modes
+
+When inspecting a regression, you can switch between several visualization modes to understand what changed:
+
+- **Side by Side**: View the baseline and actual images next to each other.
+- **Slider**: Use a draggable vertical line to reveal the difference between images in real-time.
+- **Overlay**: Superimpose the two images using a `difference` blend mode. Matching pixels appear black, while any changes are highlighted in vibrant colors.
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+  <img src="assets/screenshots/report-slider.png" alt="Slider Mode">
+  <img src="assets/screenshots/report-overlay.png" alt="Overlay Mode">
+</div>
+
+- **Diff**: View a pre-generated heatmap where differences are highlighted in red.
+
+### Features for Large Suites
+
+- **Fast Filtering**: Instantly search by scenario ID, URL, or experiment name.
+- **Status Toggles**: Filter to see only regressions, capture errors, or missing baselines.
+- **Keyboard Navigation**: Use `j` and `k` to jump between failures quickly.
+- **Custom Branding**: Use the `--title` flag with `check` or `report` to name your test runs.
+
 ### The `approve` Command
 
 If a `check` run fails due to an *intentional* change, you don't need to re-run `baseline`. Instead, you can use the `approve` command. This command promotes the "actual" images from a specific `check` run to become the new baseline, saving you time and effort.

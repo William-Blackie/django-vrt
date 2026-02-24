@@ -58,6 +58,7 @@ Captures a new set of screenshots and compares them against the baseline, report
 | `--open` | Open the generated HTML report in your browser after the run. |
 | `--retry-regressions <n>` | The number of times to retry capturing and comparing a scenario that fails with a regression. Defaults to `1`. |
 | `--skip-data-prepare` | Skip the data preparation hooks. |
+| `--title <text>` | A custom title to display in the HTML report. |
 
 ## `report`
 
@@ -71,6 +72,7 @@ Regenerates HTML and JUnit reports from an existing `summary.json` file.
 | `--html <path>` | The output path for the HTML report. |
 | `--junit <path>` | The output path for the JUnit XML file. |
 | `--open` | Open the generated HTML report in your browser. |
+| `--title <text>` | A custom title for the HTML report. |
 
 ## `approve`
 
