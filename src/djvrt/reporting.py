@@ -15,6 +15,16 @@ from djvrt.models import Lockfile, RunSummary, RunTotals, ScenarioResult
 from djvrt.report_templates import get_report_html
 from djvrt.utils import utcnow
 
+__all__ = [
+    "RunSummary",
+    "RunTotals",
+    "build_summary",
+    "read_summary",
+    "write_html_report",
+    "write_junit",
+    "write_summary",
+]
+
 
 def _build_totals(results: list[ScenarioResult]) -> RunTotals:
     return RunTotals(
@@ -202,7 +212,11 @@ def write_html_report(path: Path, summary: RunSummary, self_contained: bool = Fa
               <td>
                 <div style="display: flex; gap: 4px;">
                    <button class="btn" style="padding: 4px 8px; font-size: 11px;"
-                           onclick="event.stopPropagation(); const w = window.open(); w.document.write('<img src=\\'{actual_link}\\' style=\\'max-width:100%\\'>');">View</button>
+                           onclick="event.stopPropagation();
+                                    const w = window.open();
+                                    w.document.write('<img src=\\'{actual_link}\\' style=\\'max-width:100%\\'>');">
+                     View
+                   </button>
                 </div>
               </td>
             </tr>

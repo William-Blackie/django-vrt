@@ -713,3 +713,47 @@ def test_cli_module_entrypoint(monkeypatch: pytest.MonkeyPatch) -> None:
             sys.modules.pop("djvrt.cli", None)
         else:
             sys.modules["djvrt.cli"] = original_cli_module
+
+
+def test_example_report_command(tmp_path: Path) -> None:
+    from typer.testing import CliRunner
+
+    from djvrt.cli import app
+
+    runner = CliRunner()
+
+    report_path = tmp_path / "example-report.html"
+    # Use --no-open to avoid opening browser in tests
+    result = runner.invoke(app, ["example-report", "--output", str(report_path), "--no-open"])
+    assert result.exit_code == 0
+    assert report_path.exists()
+    assert "Example report generated at:" in result.stdout
+    assert "djvrt report" in report_path.read_text(encoding="utf-8")
+
+
+def test_example_report_command_with_title(tmp_path: Path) -> None:
+    from typer.testing import CliRunner
+
+    from djvrt.cli import app
+
+    runner = CliRunner()
+
+    report_path = tmp_path / "example-report.html"
+    result = runner.invoke(
+        app, ["example-report", "--output", str(report_path), "--no-open", "--title", "Custom Raccoons"]
+    )
+    assert result.exit_code == 0
+    assert "Custom Raccoons" in report_path.read_text(encoding="utf-8")
+
+
+def test_example_report_command_self_contained(tmp_path: Path) -> None:
+    from typer.testing import CliRunner
+
+    from djvrt.cli import app
+
+    runner = CliRunner()
+
+    report_path = tmp_path / "example-report.html"
+    result = runner.invoke(app, ["example-report", "--output", str(report_path), "--no-open", "--self-contained"])
+    assert result.exit_code == 0
+    assert "data:image/webp;base64," in report_path.read_text(encoding="utf-8")

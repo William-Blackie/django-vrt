@@ -496,3 +496,11 @@ def test_base_seeder_read_asset_bytes_validates_paths(tmp_path: Path) -> None:
 
     with pytest.raises(FileNotFoundError, match="Seed asset not found"):
         BaseDjangoVRTSeeder.read_asset_bytes(assets_root, "missing.bin")
+
+
+def test_slugify_edge_cases() -> None:
+    from djvrt.django_seed import _slugify
+
+    assert _slugify("!!!") == "variant"
+    assert _slugify("") == "variant"
+    assert _slugify("  ") == "variant"

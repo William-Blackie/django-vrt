@@ -14,7 +14,7 @@ def _summary(tmp_path: Path) -> RunSummary:
     baseline = tmp_path / "baseline.png"
     actual = tmp_path / "actual.png"
     diff = tmp_path / "diff.png"
-    
+
     # Create real images
     Image.new("RGB", (1, 1), color="white").save(baseline)
     Image.new("RGB", (1, 1), color="white").save(actual)
@@ -111,6 +111,28 @@ def test_write_self_contained_html_report(tmp_path: Path) -> None:
     assert "data:image/webp;base64," in html_content
     # Relative path should NOT be present in this mode for the baseline link
     assert '"baseline":"baseline.png"' not in html_content
+
+
+def test_file_to_data_url_edge_cases(tmp_path: Path) -> None:
+    from djvrt.reporting import _file_to_data_url
+
+    # None path
+    assert _file_to_data_url(None) == ""
+
+    # Non-existent path
+    assert _file_to_data_url(str(tmp_path / "nope.png")) == ""
+
+    # Invalid image file
+    bad_file = tmp_path / "bad.txt"
+    bad_file.write_text("not an image", encoding="utf-8")
+    assert _file_to_data_url(str(bad_file)) == ""
+
+    # Uncompressed (raw bytes)
+    img_path = tmp_path / "test.png"
+    Image.new("RGB", (1, 1), color="blue").save(img_path)
+    # Check it works without compression
+    res = _file_to_data_url(str(img_path), compress=False)
+    assert "data:image/png;base64," in res
 
 
 def test_summary_roundtrip_and_junit_output(tmp_path: Path) -> None:
